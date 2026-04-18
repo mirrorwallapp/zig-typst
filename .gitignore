@@ -4,3 +4,4 @@ zig-out/
 *.pdf
 .DS_Store
 *.swp
+Makefile
