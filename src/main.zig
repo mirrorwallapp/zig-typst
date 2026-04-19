@@ -31,7 +31,7 @@ pub fn run(allocator: std.mem.Allocator, args: Args) !void {
 
         var tok = tokenizer.Tokenizer.init(src);
 
-        if (args.mode == .tokenizer) {
+        if (args.mode == .tokenize) {
             while (tok.next()) |token| {
                 std.debug.print("{}: {s}\n", .{
                     token.tag,
@@ -56,7 +56,7 @@ const Args = struct {
 };
 
 const Mode = enum {
-    tokenizer,
+    tokenize,
     parse,
     compile,
     codegen,
