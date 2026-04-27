@@ -16,7 +16,6 @@ pub const Token = struct {
 
     pub const Tag = enum {
         invalid,
-        identifier,
         eof,
         err,
         shebang,
@@ -26,7 +25,7 @@ pub const Token = struct {
         text,
         space,
         linebreak,
-        paragrah_break,
+        parabreak,
         escape,
         shorthand,
         smartquote,
@@ -48,7 +47,7 @@ pub const Token = struct {
         enum_marker,
         term_item,
         term_marker,
-        eq,
+        equation,
 
         math,
         math_text,
@@ -59,9 +58,9 @@ pub const Token = struct {
         math_args,
         math_delim,
         math_attach,
-        math_primes,
         math_frac,
         math_root,
+        math_primes,
 
         hash,
         l_brace,
@@ -71,8 +70,8 @@ pub const Token = struct {
         l_paren,
         r_paren,
         comma,
-        colon,
         semicolon,
+        colon,
         star,
         underscore,
         dollar,
@@ -104,6 +103,8 @@ pub const Token = struct {
         none,
         auto,
 
+        paragrah_break,
+
         keyword_let,
         keyword_set,
         keyword_show,
@@ -121,6 +122,7 @@ pub const Token = struct {
         keyword_as,
 
         code,
+        identifier,
         boolean,
         int,
         float,
@@ -142,10 +144,8 @@ pub const Token = struct {
         closure,
         params,
         let_binding,
-
-        rule_set,
-        rule_show,
-
+        set_rule,
+        show_rule,
         contextual,
         conditional,
         while_loop,
@@ -155,6 +155,9 @@ pub const Token = struct {
         import_item_path,
         rename_import_item,
         module_include,
+        loop_break,
+        loop_continue,
+        func_return,
         destructuring,
         destruct_assignment,
     };
@@ -162,10 +165,13 @@ pub const Token = struct {
     pub fn lexme(tag: Tag) ?[]const u8 {
         return switch (tag) {
             .invalid,
-            .identifier,
-            .eof,
             => null,
 
+            .identifier => "identifier",
+            .eof => "end of stream",
+            .err => "error",
+            .shebang => "shebang",
+            .line_comment => "line comment",
             .bang => "!",
             .equal => "=",
             .equal_equal => "==",

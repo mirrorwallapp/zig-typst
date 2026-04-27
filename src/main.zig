@@ -66,8 +66,6 @@ const Mode = enum {
 
 fn parseArgs(init: std.process.Init.Minimal) !Args {
     // zig build run -- lex assets/intro.typ
-    // var args = init.args.iterate();
-    // _ = args.skip();
 
     var buffer: [2000]u8 = undefined;
     var fba: std.heap.FixedBufferAllocator = .init(&buffer);
