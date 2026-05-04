@@ -354,6 +354,7 @@ pub const Tokenizer = struct {
         start,
         invalid,
         identifier,
+        underscore,
     };
 
     pub fn next(self: *Tokenizer) Token {
@@ -384,14 +385,55 @@ pub const Tokenizer = struct {
                     result.loc.start = self.index;
                     continue :state .start;
                 },
-                'a'...'z', 'A'...'Z', '_' => {
+                'a'...'z', 'A'...'Z' => {
                     result.tag = .identifier;
                     continue :state .identifier;
+                },
+                '{' => {
+                    result.tag = .l_brace;
+                    self.index += 1;
+                },
+                '}' => {
+                    result.tag = .r_brace;
+                    self.index += 1;
+                },
+                '[' => {
+                    result.tag = .r_bracket;
+                    self.index += 1;
+                },
+                ']' => {
+                    result.tag = .l_bracket;
+                    self.index += 1;
+                },
+                '(' => {
+                    result.tag = .l_paren;
+                    self.index += 1;
+                },
+                ')' => {
+                    result.tag = .r_paren;
+                    self.index += 1;
+                },
+                ',' => {
+                    result.tag = .comma;
+                    self.index += 1;
                 },
                 ';' => {
                     result.tag = .semicolon;
                     self.index += 1;
                 },
+                ':' => {
+                    result.tag = .colon;
+                    self.index += 1;
+                },
+                '*' => {
+                    result.tag = .star;
+                    self.index += 1;
+                },
+                '$' => {
+                    result.tag = .dollar;
+                    self.index += 1;
+                },
+                '_' => continue :state .underscore,
                 else => continue :state .invalid,
             },
             .invalid => {
@@ -415,8 +457,17 @@ pub const Tokenizer = struct {
                         const ident = self.buffer[result.loc.start..self.index];
                         if (Token.getKeyword(ident)) |tag| {
                             result.tag = tag;
+                        } else {
+                            result.tag = .identifier;
                         }
                     },
+                }
+            },
+            .underscore => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    'a'...'z', 'A'...'Z', '0'...'9', '-', '_' => continue :state .identifier,
+                    else => result.tag = .underscore,
                 }
             },
         }
@@ -431,6 +482,38 @@ test "keywords" {
 
 test "utf-8 BOM is identified and skipped" {
     try testTokenize("\xEF\xBB\xBFa;\n", &.{ .identifier, .semicolon });
+}
+
+test "mult-character tokens" {
+    try testTokenize("_a", &.{.identifier});
+}
+
+test "lang grammar" {
+    try testTokenize(
+        \\ident
+        \\id_nt
+        \\id3nt
+        \\_ident
+        \\_Id3Nt_
+        \\let set while {}
+        \\$
+        \\ _a
+        \\ _
+    , &.{
+        .identifier,
+        .identifier,
+        .identifier,
+        .identifier,
+        .identifier,
+        .keyword_let,
+        .keyword_set,
+        .keyword_while,
+        .l_brace,
+        .r_brace,
+        .dollar,
+        .identifier,
+        .underscore,
+    });
 }
 
 fn testTokenize(source: [:0]const u8, expected_tags: []const Token.Tag) !void {
