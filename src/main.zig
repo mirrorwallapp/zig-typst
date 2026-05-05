@@ -34,7 +34,8 @@ pub fn run(allocator: std.mem.Allocator, args: Args, init: std.process.Init) !vo
         var tok = tokenizer.Tokenizer.init(buf);
 
         if (args.mode == .tokenize) {
-            while (tok.next()) |token| {
+            while (true) {
+                const token = tok.next();
                 std.debug.print("{} => {s}\n", .{
                     token.tag,
                     buf[token.loc.start..token.loc.end],
