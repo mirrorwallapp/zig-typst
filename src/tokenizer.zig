@@ -94,7 +94,7 @@ pub const Token = struct {
         comma,
         semicolon,
         colon,
-        star,
+        asterisk,
         underscore,
         dollar,
         plus,
@@ -242,7 +242,7 @@ pub const Token = struct {
             .comma => ",",
             .semicolon => ";",
             .colon => ":",
-            .star => "*",
+            .asterisk => "*",
             .underscore => "_",
             .dollar => "$",
             .plus => "+",
@@ -350,6 +350,7 @@ pub const Tokenizer = struct {
         };
     }
 
+    // state machine
     pub const State = enum {
         start,
         invalid,
@@ -361,6 +362,9 @@ pub const Tokenizer = struct {
         period,
         equal,
         bang,
+        angle_bracket_left,
+        angle_bracket_right,
+        asterisk,
     };
 
     pub fn next(self: *Tokenizer) Token {
@@ -431,10 +435,7 @@ pub const Tokenizer = struct {
                     result.tag = .colon;
                     self.index += 1;
                 },
-                '*' => {
-                    result.tag = .star;
-                    self.index += 1;
-                },
+                '*' => continue :state .asterisk,
                 '_' => continue :state .underscore,
                 '$' => {
                     result.tag = .dollar;
@@ -450,6 +451,8 @@ pub const Tokenizer = struct {
                 '.' => continue :state .period,
                 '=' => continue :state .equal,
                 '!' => continue :state .bang,
+                '<' => continue :state .angle_bracket_left,
+                '>' => continue :state .angle_bracket_right,
                 else => continue :state .invalid,
             },
             .invalid => {
@@ -546,6 +549,36 @@ pub const Tokenizer = struct {
                     else => result.tag = .bang,
                 }
             },
+            .angle_bracket_left => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    '=' => {
+                        result.tag = .angle_bracket_left_equal;
+                        self.index += 1;
+                    },
+                    else => result.tag = .angle_bracket_left,
+                }
+            },
+            .angle_bracket_right => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    '=' => {
+                        result.tag = .angle_bracket_right_equal;
+                        self.index += 1;
+                    },
+                    else => result.tag = .angle_bracket_right,
+                }
+            },
+            .asterisk => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    '=' => {
+                        result.tag = .asterisk_equal;
+                        self.index += 1;
+                    },
+                    else => result.tag = .asterisk,
+                }
+            },
         }
         result.loc.end = self.index;
         return result;
@@ -561,7 +594,29 @@ test "utf-8 BOM is identified and skipped" {
 }
 
 test "mult-character tokens" {
-    try testTokenize("_a += -= /= ==", &.{ .identifier, .plus_equal, .minus_equal, .slash_equal, .equal_equal });
+    try testTokenize(
+        \\_a 
+        \\+= 
+        \\-= 
+        \\/= 
+        \\== 
+        \\!=
+        \\<=
+        \\>=
+        \\*=
+        \\..
+    , &.{
+        .identifier,
+        .plus_equal,
+        .minus_equal,
+        .slash_equal,
+        .equal_equal,
+        .bang_equal,
+        .angle_bracket_left_equal,
+        .angle_bracket_right_equal,
+        .asterisk_equal,
+        .period_period,
+    });
 }
 
 test "lang grammar" {
@@ -577,6 +632,7 @@ test "lang grammar" {
         \\ _
         \\ +  
         \\ ^
+        \\ *
     , &.{
         .identifier,
         .identifier,
@@ -593,6 +649,7 @@ test "lang grammar" {
         .underscore,
         .plus,
         .caret,
+        .asterisk,
     });
 }
 
