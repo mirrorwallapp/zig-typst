@@ -101,7 +101,8 @@ pub const Token = struct {
         minus,
         slash,
         caret,
-        dot,
+        period,
+        period_period,
         equal,
         equal_equal,
         bang_equal,
@@ -110,10 +111,9 @@ pub const Token = struct {
         angle_bracket_right,
         angle_bracket_right_equal,
         plus_equal,
-        minus_euqal,
+        minus_equal,
         asterisk_equal,
         slash_equal,
-        dot_dot,
         equal_angle_bracket_left,
         root,
         bang,
@@ -258,10 +258,10 @@ pub const Token = struct {
             .angle_bracket_right => ">",
             .angle_bracket_right_equal => ">=",
             .plus_equal => "+=",
-            .minus_euqal => "-=",
+            .minus_equal => "-=",
             .asterisk_equal => "*=",
             .slash_equal => "/=",
-            .dot_dot => "..",
+            .period_period => "..",
             .equal_angle_bracket_left => "=<",
             .root => "root",
             .bang => "!",
@@ -355,6 +355,12 @@ pub const Tokenizer = struct {
         invalid,
         identifier,
         underscore,
+        plus,
+        minus,
+        slash,
+        period,
+        equal,
+        bang,
     };
 
     pub fn next(self: *Tokenizer) Token {
@@ -429,11 +435,21 @@ pub const Tokenizer = struct {
                     result.tag = .star;
                     self.index += 1;
                 },
+                '_' => continue :state .underscore,
                 '$' => {
                     result.tag = .dollar;
                     self.index += 1;
                 },
-                '_' => continue :state .underscore,
+                '+' => continue :state .plus,
+                '-' => continue :state .minus,
+                '/' => continue :state .slash,
+                '^' => {
+                    result.tag = .caret;
+                    self.index += 1;
+                },
+                '.' => continue :state .period,
+                '=' => continue :state .equal,
+                '!' => continue :state .bang,
                 else => continue :state .invalid,
             },
             .invalid => {
@@ -470,6 +486,66 @@ pub const Tokenizer = struct {
                     else => result.tag = .underscore,
                 }
             },
+            .plus => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    '=' => {
+                        result.tag = .plus_equal;
+                        self.index += 1;
+                    },
+                    else => result.tag = .plus,
+                }
+            },
+            .minus => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    '=' => {
+                        result.tag = .minus_equal;
+                        self.index += 1;
+                    },
+                    else => result.tag = .minus,
+                }
+            },
+            .slash => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    '=' => {
+                        result.tag = .slash_equal;
+                        self.index += 1;
+                    },
+                    else => result.tag = .slash,
+                }
+            },
+            .period => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    '.' => {
+                        result.tag = .period_period;
+                        self.index += 1;
+                    },
+                    else => result.tag = .period,
+                }
+            },
+            .equal => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    '=' => {
+                        result.tag = .equal_equal;
+                        self.index += 1;
+                    },
+                    else => result.tag = .equal,
+                }
+            },
+            .bang => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    '=' => {
+                        result.tag = .bang_equal;
+                        self.index += 1;
+                    },
+                    else => result.tag = .bang,
+                }
+            },
         }
         result.loc.end = self.index;
         return result;
@@ -485,7 +561,7 @@ test "utf-8 BOM is identified and skipped" {
 }
 
 test "mult-character tokens" {
-    try testTokenize("_a", &.{.identifier});
+    try testTokenize("_a += -= /= ==", &.{ .identifier, .plus_equal, .minus_equal, .slash_equal, .equal_equal });
 }
 
 test "lang grammar" {
@@ -499,6 +575,8 @@ test "lang grammar" {
         \\$
         \\ _a
         \\ _
+        \\ +  
+        \\ ^
     , &.{
         .identifier,
         .identifier,
@@ -513,6 +591,8 @@ test "lang grammar" {
         .dollar,
         .identifier,
         .underscore,
+        .plus,
+        .caret,
     });
 }
 
