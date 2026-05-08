@@ -368,6 +368,7 @@ pub const Tokenizer = struct {
         hash,
         line_comment_start,
         line_comment,
+        expect_newline,
     };
 
     pub fn next(self: *Tokenizer) Token {
@@ -615,9 +616,53 @@ pub const Tokenizer = struct {
                     },
                     '\r' => continue :state .expect_newline,
                     0x01...0x09, 0x0b...0x0c, 0x0e...0x1f, 0x7f => {
-                        continue :state .invlid;
+                        continue :state .invalid;
                     },
                     else => continue :state .line_comment,
+                }
+            },
+            .line_comment => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    0 => {
+                        if (self.index != self.buffer.len) {
+                            continue :state .invalid;
+                        } else return .{
+                            .tag = .eof,
+                            .loc = .{
+                                .start = self.index,
+                                .end = self.index,
+                            },
+                        };
+                    },
+                    '\n' => {
+                        self.index += 1;
+                        result.loc.start = self.index;
+                        continue :state .start;
+                    },
+                    '\r' => continue :state .expect_newline,
+                    0x01...0x09, 0x0b...0x0c, 0x0e...0x1f, 0x7f => {
+                        continue :state .invalid;
+                    },
+                    else => continue :state .line_comment,
+                }
+            },
+            .expect_newline => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    0 => {
+                        if (self.index == self.buffer.len) {
+                            result.tag = .invalid;
+                        } else {
+                            continue :state .invalid;
+                        }
+                    },
+                    '\n' => {
+                        self.index += 1;
+                        result.loc.start = self.index;
+                        continue :state .start;
+                    },
+                    else => continue :state .invalid,
                 }
             },
         }
@@ -648,6 +693,7 @@ test "mult-character tokens" {
         \\..
         \\#!
         \\/=
+        \\// this is a comment
     , &.{
         .identifier,
         .plus_equal,
@@ -661,6 +707,7 @@ test "mult-character tokens" {
         .period_period,
         .shebang,
         .slash_equal,
+        .line_comment,
     });
 }
 
