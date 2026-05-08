@@ -610,6 +610,7 @@ pub const Tokenizer = struct {
                         };
                     },
                     '\n' => {
+                        std.debug.print("at line_comment_start - 0\n", .{});
                         self.index += 1;
                         result.loc.start = self.index;
                         continue :state .start;
@@ -636,6 +637,7 @@ pub const Tokenizer = struct {
                         };
                     },
                     '\n' => {
+                        std.debug.print("ending at newline\n", .{});
                         self.index += 1;
                         result.loc.start = self.index;
                         continue :state .start;
@@ -693,7 +695,8 @@ test "mult-character tokens" {
         \\..
         \\#!
         \\/=
-        \\// this is a comment
+        \\//comment
+        \\#!
     , &.{
         .identifier,
         .plus_equal,
@@ -707,7 +710,8 @@ test "mult-character tokens" {
         .period_period,
         .shebang,
         .slash_equal,
-        .line_comment,
+        .eof,
+        .shebang,
     });
 }
 
@@ -727,6 +731,7 @@ test "lang grammar" {
         \\ *
         \\ !
         \\ #
+        \\ /
     , &.{
         .identifier,
         .identifier,
@@ -746,6 +751,7 @@ test "lang grammar" {
         .asterisk,
         .bang,
         .hash,
+        .slash,
     });
 }
 
