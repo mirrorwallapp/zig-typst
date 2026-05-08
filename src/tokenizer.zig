@@ -365,6 +365,9 @@ pub const Tokenizer = struct {
         angle_bracket_left,
         angle_bracket_right,
         asterisk,
+        hash,
+        line_comment_start,
+        line_comment,
     };
 
     pub fn next(self: *Tokenizer) Token {
@@ -453,6 +456,7 @@ pub const Tokenizer = struct {
                 '!' => continue :state .bang,
                 '<' => continue :state .angle_bracket_left,
                 '>' => continue :state .angle_bracket_right,
+                '#' => continue :state .hash,
                 else => continue :state .invalid,
             },
             .invalid => {
@@ -516,6 +520,7 @@ pub const Tokenizer = struct {
                         result.tag = .slash_equal;
                         self.index += 1;
                     },
+                    '/' => continue :state .line_comment_start,
                     else => result.tag = .slash,
                 }
             },
@@ -579,6 +584,42 @@ pub const Tokenizer = struct {
                     else => result.tag = .asterisk,
                 }
             },
+            .hash => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    '!' => {
+                        result.tag = .shebang;
+                        self.index += 1;
+                    },
+                    else => result.tag = .hash,
+                }
+            },
+            .line_comment_start => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    0 => {
+                        if (self.index != self.buffer.len) {
+                            continue :state .invalid;
+                        } else return .{
+                            .tag = .eof,
+                            .loc = .{
+                                .start = self.index,
+                                .end = self.index,
+                            },
+                        };
+                    },
+                    '\n' => {
+                        self.index += 1;
+                        result.loc.start = self.index;
+                        continue :state .start;
+                    },
+                    '\r' => continue :state .expect_newline,
+                    0x01...0x09, 0x0b...0x0c, 0x0e...0x1f, 0x7f => {
+                        continue :state .invlid;
+                    },
+                    else => continue :state .line_comment,
+                }
+            },
         }
         result.loc.end = self.index;
         return result;
@@ -605,6 +646,8 @@ test "mult-character tokens" {
         \\>=
         \\*=
         \\..
+        \\#!
+        \\/=
     , &.{
         .identifier,
         .plus_equal,
@@ -616,6 +659,8 @@ test "mult-character tokens" {
         .angle_bracket_right_equal,
         .asterisk_equal,
         .period_period,
+        .shebang,
+        .slash_equal,
     });
 }
 
@@ -633,6 +678,8 @@ test "lang grammar" {
         \\ +  
         \\ ^
         \\ *
+        \\ !
+        \\ #
     , &.{
         .identifier,
         .identifier,
@@ -650,6 +697,8 @@ test "lang grammar" {
         .plus,
         .caret,
         .asterisk,
+        .bang,
+        .hash,
     });
 }
 
