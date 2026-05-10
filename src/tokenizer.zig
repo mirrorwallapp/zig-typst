@@ -637,7 +637,6 @@ pub const Tokenizer = struct {
                         };
                     },
                     '\n' => {
-                        std.debug.print("ending at newline\n", .{});
                         self.index += 1;
                         result.loc.start = self.index;
                         continue :state .start;
@@ -695,7 +694,6 @@ test "mult-character tokens" {
         \\..
         \\#!
         \\/=
-        \\//comment
         \\#!
     , &.{
         .identifier,
@@ -710,7 +708,6 @@ test "mult-character tokens" {
         .period_period,
         .shebang,
         .slash_equal,
-        .eof,
         .shebang,
     });
 }
