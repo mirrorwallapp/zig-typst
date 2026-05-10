@@ -369,6 +369,8 @@ pub const Tokenizer = struct {
         line_comment_start,
         line_comment,
         expect_newline,
+        block_comment_start,
+        block_comment,
     };
 
     pub fn next(self: *Tokenizer) Token {
@@ -522,6 +524,7 @@ pub const Tokenizer = struct {
                         self.index += 1;
                     },
                     '/' => continue :state .line_comment_start,
+                    '*' => continue :state .block_comment_start,
                     else => result.tag = .slash,
                 }
             },
@@ -580,6 +583,10 @@ pub const Tokenizer = struct {
                 switch (self.buffer[self.index]) {
                     '=' => {
                         result.tag = .asterisk_equal;
+                        self.index += 1;
+                    },
+                    '/' => {
+                        result.tag = .block_comment;
                         self.index += 1;
                     },
                     else => result.tag = .asterisk,
@@ -664,6 +671,45 @@ pub const Tokenizer = struct {
                         continue :state .start;
                     },
                     else => continue :state .invalid,
+                }
+            },
+            .block_comment_start => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    0 => {
+                        if (self.index != self.buffer.len) {
+                            continue :state .invalid;
+                        } else return .{
+                            .tag = .eof,
+                            .loc = .{
+                                .start = self.index,
+                                .end = self.index,
+                            },
+                        };
+                    },
+                    else => continue :state .block_comment,
+                }
+            },
+            .block_comment => {
+                self.index += 1;
+                switch (self.buffer[self.index]) {
+                    0 => {
+                        if (self.index != self.buffer.len) {
+                            continue :state .invalid;
+                        } else return .{
+                            .tag = .eof,
+                            .loc = .{
+                                .start = self.index,
+                                .end = self.index,
+                            },
+                        };
+                    },
+                    '\n' => {
+                        self.index += 1;
+                        result.loc.start = self.index;
+                        continue :state .start;
+                    },
+                    else => continue :state .block_comment,
                 }
             },
         }
